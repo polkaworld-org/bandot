@@ -14,6 +14,7 @@ It currently provides a stablecoin exchange like MarkerDAO, and will support a o
 
 ## How to build and run
 
-```$ cargo build --release
+```
+$ cargo build --release
 $ ./target/release/bandot --dev
 ```
