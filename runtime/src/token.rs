@@ -126,12 +126,22 @@ decl_module! {
 			let pre_locked_amount = user_asserts.locked_amount;
 			let pre_lending_amount = user_asserts.lending_amount;
 
-			ensure!(pre_lending_amount >= pre_lending_amount + amount, "Not enough stake.");
-			user_asserts.lending_amount = pre_lending_amount + amount;
-			user_asserts.locked_amount = pre_locked_amount + amount;
-			
-			let fee = 1u128;
+			ensure!(pre_lending_amount >= pre_lending_amount.checked_add(amount).ok_or("overflow in lending")?, "Not enough stake.");
+			user_asserts.lending_amount = pre_lending_amount.checked_add(amount).ok_or("overflow in lending")?;
+			user_asserts.locked_amount = pre_locked_amount.checked_add(amount).ok_or("overflow in locking")?;
+
 			<UserAssetsInfo<T>>::insert(owner.clone(), user_asserts);
+
+			let fee = 1u128;//temporary fee
+			// send token
+			let token_amount = amount.checked_sub(fee).ok_or("overflow in token")?;
+			let receiver_balance = Self::balance_of(owner.clone());
+			let updated_to_balance = receiver_balance.checked_add(token_amount).ok_or("overflow in balance")?;
+			<BalanceOf<T>>::insert(owner.clone(), updated_to_balance);
+
+			let base_circulation = Self::circulation();
+			let updated_circulation = base_circulation.checked_add(token_amount).ok_or("overflow in circulation")?;
+			Circulation::put(updated_circulation);
 
 			Self::deposit_event(RawEvent::Exchange(owner, amount, fee));
 			Ok(())
